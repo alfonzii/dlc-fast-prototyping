@@ -1,8 +1,6 @@
 // main.rs
 
 use std::sync::Arc;
-#[cfg(feature = "enable-benchmarks")]
-use std::time::Instant;
 
 use common::{types, FinalizedTx};
 use config::{
@@ -52,53 +50,59 @@ mod bench {
         f()
     }
 
-    // Function to print benchmarking table.
     #[cfg(feature = "enable-benchmarks")]
-    pub fn print_table(steps: &Vec<(String, Duration)>, total_time: Duration) {
+    fn print_party_table(steps: &[(String, Duration)], party_name: &str) {
+        let mut total_time = Duration::new(0, 0);
+        for (_, step_dur) in steps {
+            total_time += *step_dur;
+        }
+
         println!("\n-------------------------------------------------------------");
         println!("{:<35}{:<15}{:<15}", "STEP", "TIME", "RATIO");
         println!("-------------------------------------------------------------");
 
-        let mut alice_time = Duration::new(0, 0);
-        let mut bob_time = Duration::new(0, 0);
-
         for (label, step_dur) in steps {
-            let ratio = (step_dur.as_secs_f64() / total_time.as_secs_f64()) * 100.0;
+            let ratio = if total_time.is_zero() {
+                0.0
+            } else {
+                (step_dur.as_secs_f64() / total_time.as_secs_f64()) * 100.0
+            };
+
             println!(
                 "{:<35}{:<15}{:.2}%",
                 label,
                 format!("{}ms", step_dur.as_millis()),
                 ratio
             );
-
-            if label.to_lowercase().contains("alice") {
-                alice_time += *step_dur;
-            } else if label.to_lowercase().contains("bob") {
-                bob_time += *step_dur;
-            }
         }
 
         println!("-------------------------------------------------------------");
         println!(
             "{:<35}{:<15}{}",
-            "TOTAL RUNTIME:",
+            format!("TOTAL {} RUNTIME:", party_name.to_uppercase()),
             format!("{}ms", total_time.as_millis()),
             "100.00%"
         );
         println!("-------------------------------------------------------------");
-        println!(
-            "{:<35}{:<15}{:.2}%",
-            "TOTAL ALICE RUNTIME:",
-            format!("{}ms", alice_time.as_millis()),
-            (alice_time.as_secs_f64() / total_time.as_secs_f64()) * 100.0
-        );
-        println!(
-            "{:<35}{:<15}{:.2}%",
-            "TOTAL BOB RUNTIME:",
-            format!("{}ms", bob_time.as_millis()),
-            (bob_time.as_secs_f64() / total_time.as_secs_f64()) * 100.0
-        );
-        println!("-------------------------------------------------------------");
+    }
+
+    // Print independent benchmark tables for Alice and Bob.
+    #[cfg(feature = "enable-benchmarks")]
+    pub fn print_table(steps: &[(String, Duration)]) {
+        let mut alice_steps = Vec::new();
+        let mut bob_steps = Vec::new();
+
+        for (label, duration) in steps {
+            let lower = label.to_lowercase();
+            if lower.contains("alice") {
+                alice_steps.push((label.clone(), *duration));
+            } else if lower.contains("bob") {
+                bob_steps.push((label.clone(), *duration));
+            }
+        }
+
+        print_party_table(&alice_steps, "Alice");
+        print_party_table(&bob_steps, "Bob");
     }
 }
 
@@ -154,9 +158,6 @@ fn finalized_tx_valid(
 }
 
 fn main() {
-    #[cfg(feature = "enable-benchmarks")]
-    let start = Instant::now();
-
     let mut steps = Vec::new();
 
     // Create oracle pointer, so both controllers use API of same oracle
@@ -261,9 +262,7 @@ fn main() {
     });
 
     #[cfg(feature = "enable-benchmarks")]
-    let total_time = start.elapsed();
-    #[cfg(feature = "enable-benchmarks")]
-    bench::print_table(&steps, total_time);
+    bench::print_table(&steps);
 }
 
 #[cfg(test)]
