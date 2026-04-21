@@ -2,6 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use dlc_fast_prototyping::config::runparams::{MyAdaptorSignatureScheme, MyCryptoUtils};
 use rand::thread_rng;
 use secp256k1_zkp::{Keypair, Secp256k1};
+use serde_json::Value;
+use std::{env, fs, path::PathBuf};
 
 // Import necessary types and functions
 use dlc_fast_prototyping::adaptor_signature_scheme::AdaptorSignatureScheme;
@@ -11,6 +13,88 @@ use dlc_fast_prototyping::crypto_utils::CryptoUtils;
 
 const POW2_20SUB1: u32 = 1_048_575; // twenty bits set to 1 in binary
 const POW2_10SUB1: u32 = 1023; // ten bits set to 1 in binary
+
+fn criterion_root_dir() -> PathBuf {
+    match env::var("CARGO_TARGET_DIR") {
+        Ok(target_dir) => PathBuf::from(target_dir).join("criterion"),
+        Err(_) => PathBuf::from("target").join("criterion"),
+    }
+}
+
+fn read_criterion_mean_ns(benchmark_id: &str) -> Option<f64> {
+    let estimates_path = criterion_root_dir()
+        .join(benchmark_id)
+        .join("new")
+        .join("estimates.json");
+
+    let json_raw = fs::read_to_string(estimates_path).ok()?;
+    let value: Value = serde_json::from_str(&json_raw).ok()?;
+
+    value.get("mean")?.get("point_estimate")?.as_f64()
+}
+
+fn format_ns(ns: f64) -> String {
+    if ns >= 1_000_000.0 {
+        format!("{:.3}ms", ns / 1_000_000.0)
+    } else if ns >= 1_000.0 {
+        format!("{:.3}us", ns / 1_000.0)
+    } else {
+        format!("{:.3}ns", ns)
+    }
+}
+
+fn report_selected_ratio_from_criterion(_c: &mut Criterion) {
+    let selected = [
+        ("bench_create_cet", "create_cet"),
+        ("bench_create_message", "create_message"),
+        (
+            "bench_compute_anticipation_point",
+            "compute_anticipation_point",
+        ),
+        ("bench_pre_sign", "pre_sign"),
+    ];
+
+    let mut measured = Vec::with_capacity(selected.len());
+    for (label, bench_id) in selected {
+        match read_criterion_mean_ns(bench_id) {
+            Some(mean_ns) => measured.push((label, mean_ns)),
+            None => {
+                println!(
+                    "\nCould not read Criterion mean for benchmark '{}'.",
+                    bench_id
+                );
+                println!("Relative ratio report skipped.\n");
+                return;
+            }
+        }
+    }
+
+    let total: f64 = measured.iter().map(|(_, mean_ns)| *mean_ns).sum();
+
+    println!("\n=============================================================");
+    println!("Relative Runtime Report (Criterion means, selected only)");
+    println!("-------------------------------------------------------------");
+    println!("{:<35}{:<15}{:<15}", "FUNCTION", "MEAN", "RATIO");
+    println!("-------------------------------------------------------------");
+
+    for (label, mean_ns) in &measured {
+        let ratio = if total == 0.0 {
+            0.0
+        } else {
+            (*mean_ns / total) * 100.0
+        };
+        println!("{:<35}{:<15}{:.2}%", label, format_ns(*mean_ns), ratio);
+    }
+
+    println!("-------------------------------------------------------------");
+    println!(
+        "{:<35}{:<15}{}",
+        "TOTAL (4 selected functions)",
+        format_ns(total),
+        "100.00%"
+    );
+    println!("=============================================================\n");
+}
 
 fn bench_create_cet(c: &mut Criterion) {
     let total_collateral = 1000;
@@ -102,7 +186,6 @@ fn bench_verify_adaptor(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(10000);
-    targets = bench_create_cet, bench_create_message, bench_compute_anticipation_point, bench_pre_sign, bench_verify_adaptor
-    // targets = bench_compute_anticipation_point
+    targets = bench_create_cet, bench_create_message, bench_compute_anticipation_point, bench_pre_sign, bench_verify_adaptor, report_selected_ratio_from_criterion
 }
 criterion_main!(benches);
