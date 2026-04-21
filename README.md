@@ -78,7 +78,7 @@ cargo bench --bench math-bench --features "[CUSTOM FEATURES]"
 ```
 This allows testing core cryptographic primitives.
 
-> Only ecdsa or schnorr features are relevant for function-level benchmarks.
+> Only adaptor signature scheme and anticipation point computation features are relevant for function-level benchmarks.
 
 ### Run Comparative Decision Benchmarks
 
