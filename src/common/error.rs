@@ -7,9 +7,9 @@ pub enum ContractError {
     InvalidIntervalPoints,
     NonContinuousIntervals,
     OutcomeRangeMismatch,
+    CollateralSumOverflow,
     InvalidPayout,
     TooHighFeeRate,
-    EmptyContract,
     NbDigitsMismatch,
 }
 
@@ -27,12 +27,14 @@ impl std::fmt::Display for ContractError {
             ContractError::OutcomeRangeMismatch => {
                 write!(f, "Last outcome not matching 2^NB_DIGITS - 1")
             }
+            ContractError::CollateralSumOverflow => {
+                write!(f, "The sum of collaterals exceeds 2^64 - 1")
+            }
             ContractError::InvalidPayout => write!(
                 f,
                 "outcomePayout cannot exceed sum of offerCollateral + acceptCollateral"
             ),
             ContractError::TooHighFeeRate => write!(f, "feeRate too high (> 25 * 250)"),
-            ContractError::EmptyContract => write!(f, "Contract fields must be non-empty"),
             ContractError::NbDigitsMismatch => {
                 write!(f, "nb_digits in input does not match NB_DIGITS constant")
             }

@@ -94,14 +94,6 @@ impl Parser<types::OutcomeU32> for SimpleOutU32Parser {
     fn parse_contract_input(
         contract_input: ContractInput,
     ) -> Result<ParsedContract<OutcomeU32>, Error> {
-        // Call validation first
-        contract_input.validate().map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{:?} error - {} ", e, e),
-            )
-        })?;
-
         // At this point, if we have reached here, we can safely assume that the contract is valid
 
         // Reserve capacity for final vector based on number of possible outcomes (we avoid reallocating by doing this)
@@ -109,26 +101,26 @@ impl Parser<types::OutcomeU32> for SimpleOutU32Parser {
             ParsedContract::<types::OutcomeU32>::with_capacity(NB_OUTCOMES as usize);
 
         // Parse contract intervals and create a vector of (outcome, payout) pairs
-        for interval in &contract_input
-            .contract_info
-            .contract_descriptor
-            .payout_intervals
+        for interval in contract_input
+            .contract_info()
+            .contract_descriptor()
+            .payout_intervals()
         {
             // Get start and end points of the interval
-            let start_point = &interval.payout_points[0];
-            let end_point = &interval.payout_points[1];
+            let start_point = &interval.payout_points()[0];
+            let end_point = &interval.payout_points()[1];
 
             // Calculate interval length and payout difference
-            let start_outcome = start_point.event_outcome;
-            let end_outcome = end_point.event_outcome;
+            let start_outcome = start_point.event_outcome();
+            let end_outcome = end_point.event_outcome();
             assert!(
                 end_outcome > start_outcome,
                 "end outcome must be greater than start outcome"
             );
             let interval_len = end_outcome - start_outcome;
 
-            let start_payout = start_point.outcome_payout;
-            let end_payout = end_point.outcome_payout;
+            let start_payout = start_point.outcome_payout();
+            let end_payout = end_point.outcome_payout();
             let diff = (end_payout as i64) - (start_payout as i64);
 
             if diff == 0 {
@@ -145,15 +137,15 @@ impl Parser<types::OutcomeU32> for SimpleOutU32Parser {
 
         // Manually add the last interval's last point to the parsed contract, as we don't add into `repeated` last (outcome, payout) pair from interval
         let last_interval = contract_input
-            .contract_info
-            .contract_descriptor
-            .payout_intervals
+            .contract_info()
+            .contract_descriptor()
+            .payout_intervals()
             .last()
             .unwrap();
-        let last_point = last_interval.payout_points.last().unwrap();
+        let last_point = last_interval.payout_points().last().unwrap();
         parsed_contract.push((
-            OutcomeU32::from(last_point.event_outcome),
-            last_point.outcome_payout,
+            OutcomeU32::from(last_point.event_outcome()),
+            last_point.outcome_payout(),
         ));
 
         Ok(parsed_contract)

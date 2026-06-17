@@ -89,7 +89,7 @@ where
     fn load_input(&mut self, input_path: &str) -> Result<(), Error> {
         let contract_input = MyParser::read_input(input_path)?;
         // We created this small hack where we take out total_collateral instead of whole ContractInput. However, it can be changed, but for now it seems to be fine.
-        self.total_collateral = contract_input.accept_collateral + contract_input.offer_collateral;
+        self.total_collateral = contract_input.total_collateral().into();
         self.parsed_contract = MyParser::parse_contract_input(contract_input)?;
         Ok(())
     }
