@@ -96,7 +96,7 @@ cargo bench --bench benchmark --features "[CUSTOM FEATURES]"
 This framework was developed as part of the thesis project _“Practical Oracle-Based Bitcoin Payments”_.
 The goal was to create a flexible, modular environment for evaluating and optimizing DLC protocol components—particularly focusing on cryptographic performance and protocol design.
 
-For more details on the design rationale and performance analysis, please refer to the [thesis](https://google.com).
+For more details on the design rationale and performance analysis, please refer to the [thesis](http://hdl.handle.net/20.500.11956/209708).
 
 ## Acknowledgments
 
